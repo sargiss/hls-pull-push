@@ -207,6 +207,7 @@ export class Session {
       try {
         debug(`[${this.sessionId}]: Trying to upload multivariant manifest...`);
         this.masterM3U8 = this.hlsrecorder.masterManifest.replace(/master/g, "channel_");
+        this.masterM3U8 = this.masterM3U8.replace("null", "0");
         if (this.masterM3U8 !== "") {
           let result = await this.outputDestination.uploadMediaPlaylist({
             fileName: "channel.m3u8",
