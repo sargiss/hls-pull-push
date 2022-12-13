@@ -1,6 +1,6 @@
 {
-  "name": "@eyevinn/hls-pull-push",
-  "version": "0.3.1",
+  "name": "@sargiss/hls-pull-push",
+  "version": "3.0.0",
   "description": "NPM library to pull HLS Live and Push to a another origin",
   "main": "dist/index.js",
   "scripts": {
@@ -14,15 +14,15 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Eyevinn/hls-pull-push.git"
+    "url": "git+https://github.com/sargiss/hls-pull-push.git"
   },
   "engines": {
     "npm": ">=6.0.0",
     "node": ">=12.0.0"
   },
   "devDependencies": {
-    "@types/node": "^16.11.6",
-    "typescript": "^4.4.4"
+    "@types/node": "^18.11.13",
+    "typescript": "^4.9.4"
   },
   "dependencies": {
     "@aws-sdk/client-mediapackage": "^3.41.0",
