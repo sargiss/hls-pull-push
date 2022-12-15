@@ -60,6 +60,7 @@ export class Session {
   eventQueue: any[];
   eventQueueHasStopped: boolean;
   segmentGraveyard: IRemovedSegment[];
+  retryTimeout: ReturnType<typeof setTimeout>;
 
   constructor(params: {
     name: string;
@@ -137,8 +138,18 @@ export class Session {
       }
     });
 
+    let allowRetry = true;
+    setTimeout(() => { allowRetry = false; }, 1200000);
+
     this.hlsrecorder.on("error", (err) => {
       debug(`[${this.sessionId}]: Error from HLS Recorder! ${err}`);
+      if (err.includes("Returned Status Code: 404")) {
+        if (allowRetry) {
+          this.retryTimeout = setTimeout(() => { this.hlsrecorder.start(); }, 2000);
+          return;
+        }
+        console.log("no incoming stream for " + this.name + " found for 20 minutes: stopping")
+      }
       this.StopHLSRecorder();
     });
     // Start Recording the HLS stream
@@ -152,6 +163,9 @@ export class Session {
   async StopHLSRecorder(): Promise<void> {
     if (this.hlsrecorder) {
       try {
+        if (this.retryTimeout) {
+          clearTimeout(this.retryTimeout);
+        }
         await this.hlsrecorder.stop();
         this.active = false;
         debug(`[${this.sessionId}]: Recorder session set to inactive`);
@@ -206,8 +220,9 @@ export class Session {
     if (!this.masterM3U8) {
       try {
         debug(`[${this.sessionId}]: Trying to upload multivariant manifest...`);
-        this.masterM3U8 = this.hlsrecorder.masterManifest.replace(/master/g, "channel_");
-        this.masterM3U8 = this.masterM3U8.replace("null", "0");
+        this.masterM3U8 = this.hlsrecorder.masterManifest.replace(/master/g, "channel_").replace(/null/g, "0");
+        console.log("MASTER", this.masterM3U8);
+
         if (this.masterM3U8 !== "") {
           let result = await this.outputDestination.uploadMediaPlaylist({
             fileName: "channel.m3u8",

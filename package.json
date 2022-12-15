@@ -1,6 +1,6 @@
 {
   "name": "@sargiss/hls-pull-push",
-  "version": "3.0.0",
+  "version": "3.0.5",
   "description": "NPM library to pull HLS Live and Push to a another origin",
   "main": "dist/index.js",
   "scripts": {
