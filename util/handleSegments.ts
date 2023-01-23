@@ -1,7 +1,7 @@
 // ********************/
 // Helper Functions
 // ********************/
-import { ISegments } from "@eyevinn/hls-recorder";
+import { ISegments } from "@sargiss/hls-recorder";
 const debug = require("debug")("hls-pull-push");
 /**
  * Function extracts new segment items based on the difference in media sequence

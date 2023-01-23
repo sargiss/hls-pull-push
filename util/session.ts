@@ -1,6 +1,6 @@
 import uuid from "uuid/v4";
 import clone from "clone";
-import { HLSRecorder, ISegments, PlaylistType, Segment } from "@eyevinn/hls-recorder";
+import { HLSRecorder, ISegments, PlaylistType, Segment } from "@sargiss/hls-recorder";
 import { promise as fastq } from "fastq";
 import type { queueAsPromised } from "fastq";
 import { GetOnlyNewestSegments, ReplaceSegmentURLs } from "../util/handleSegments";
@@ -8,7 +8,7 @@ import {
   GenerateAudioM3U8,
   GenerateMediaM3U8,
   GenerateSubtitleM3U8,
-} from "@eyevinn/hls-recorder/dist/util/manifest_generator.js";
+} from "@sargiss/hls-recorder/dist/util/manifest_generator.js";
 import { IOutputPluginDest } from "../types/output_plugin";
 const debug = require("debug")("hls-pull-push");
 
@@ -61,6 +61,7 @@ export class Session {
   eventQueueHasStopped: boolean;
   segmentGraveyard: IRemovedSegment[];
   retryTimeout: ReturnType<typeof setTimeout>;
+  skipFirstSegment: boolean;
 
   constructor(params: {
     name: string;
@@ -121,6 +122,7 @@ export class Session {
         this.concurrentWorkers
       );
     }
+    this.skipFirstSegment = (!process.env.SKIP_FIRST_SEGMENT) ? false: process.env.SKIP_FIRST_SEGMENT === 'true';
     // .-------------------------------------------.
     // |   Processing new recorder segment items   |
     // '-------------------------------------------'
@@ -143,7 +145,7 @@ export class Session {
 
     this.hlsrecorder.on("error", (err) => {
       debug(`[${this.sessionId}]: Error from HLS Recorder! ${err}`);
-      if (err.includes("Returned Status Code: 404")) {
+      if (typeof err == "string" && err.includes("Returned Status Code: 404")) {
         if (allowRetry) {
           this.retryTimeout = setTimeout(() => { this.hlsrecorder.start(); }, 2000);
           return;
@@ -441,7 +443,7 @@ export class Session {
     const groupsAudio = Object.keys(segments["audio"]);
     const groupsSubs = Object.keys(segments["subtitle"]);
     // Start pushing segments for all variants before moving on the next
-    let segListSize = segments["video"][bandwidths[0]].segList.length;
+    /*let segListSize = segments["video"][bandwidths[0]].segList.length;
     for (let i = 0; i < segListSize; i++) {
       bandwidths.forEach((bw) => {
         const segmentUri = segments["video"][bw].segList[i].uri;
@@ -456,7 +458,29 @@ export class Session {
           tasks.push(taskQueue.push(item));
         }
       });
-    }
+    }*/
+
+    bandwidths.forEach((bw) => {
+      let segListSize = segments["video"][bw].segList.length;
+      for (let i = 0; i < segListSize; i++) {
+        if (this.skipFirstSegment && segments["video"][bw].segList[i].index == 1) {
+          debug(`[${this.sessionId}]: skip first segments for bw = ${bw}`);
+          continue;
+        }
+        const segmentUri = segments["video"][bw].segList[i].uri;
+        if (segmentUri) {
+          // Design of the File Name here:
+          const sourceFileExtension = new URL(segmentUri).pathname.split(".").pop();
+          const segmentFileName = `channel_${bw}_${segments["video"][bw].segList[i].index}.${sourceFileExtension}`;
+          let item = {
+            uri: segmentUri,
+            fileName: segmentFileName,
+          };
+          tasks.push(taskQueue.push(item));
+        }
+      }
+    });
+
     /* 
     
     TODO: Support Multi-tracks
